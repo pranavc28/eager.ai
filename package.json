@@ -11,6 +11,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
     "@types/node": "20.1.4",
     "@types/react": "18.2.6",
     "@types/react-dom": "18.2.4",
@@ -18,6 +19,9 @@
     "concurrently": "^8.0.1",
     "eslint": "8.40.0",
     "eslint-config-next": "13.4.2",
+    "extendable-media-recorder": "^9.2.10",
+    "extendable-media-recorder-wav-encoder": "^7.0.114",
+    "lamejs": "^1.2.1",
     "next": "13.4.3",
     "postcss": "8.4.23",
     "react": "18.2.0",
