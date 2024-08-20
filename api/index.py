@@ -2,93 +2,28 @@ import time
 from flask import Flask, request, jsonify
 import sys
 import os
-import pathlib
 import io
 from openai import OpenAI
+from pydub import AudioSegment
 from two_sum_data import clusters
 from two_sum_code_quality import code_quality_clusters
 from flask_cors import CORS
 import speech_recognition as sr
-from pydub import AudioSegment
-from pydub.utils import which
 from google.cloud import speech
 from google.oauth2 import service_account
-from gcs import GCStorage, STORAGE_CLASSES
-from google.cloud import storage
+from speech_quality_rubric import speech_rubric_content
 
 client_file='chrisai-432605-f6bfd5c847bc.json'
 credentials=service_account.Credentials.from_service_account_file(client_file)
 google_client = speech.SpeechClient(credentials=credentials)
-
-app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
-
-def upload_media_to_gcs(gcs):
-    # Step 1. prepare the variables
-    # Convert the string to a Path object
-    files_folder = pathlib.Path('app/uploads/audio/')
-    bucket_name = 'chris_ai_audio'
-
-    # Step 3. Create gcp_api_demo Cloud Storage bucket
-    if not bucket_name in gcs.list_buckets():
-        bucket_gcs = gcs.create_bucket('gcs_api_demo', STORAGE_CLASSES[0])
-    else:
-        bucket_gcs = gcs.get_bucket(bucket_name)
-
-    # Step 4. Upload Files
-    for file_path in files_folder.glob('*.*'):
-        # use file name without the extension
-        gcs.upload_file(bucket_gcs, 'without extension/' + file_path.stem, str(file_path))
-
-        # use full file name
-    gcs.upload_file(bucket_gcs, file_path.name, str(file_path))
-
-def download_media_from_gcs(gcs, files_folder):
-    # Step 5. Download & Delete Files
-    gcs_demo_blobs = gcs.list_blobs('chris_ai_audio')
-    for blob in gcs_demo_blobs:
-        path_download = files_folder.joinpath(blob.name)
-        if not path_download.parent.exists():
-            path_download.parent.mkdir(parents=True)
-        print(path_download)
-        # blob.download_to_filename(str(path_download))
-        # blob.delete()
-
-def transcribe_model_selection_v2(
-    model: str,
-    audio_file: str,
-):
-    """Transcribe an audio file."""
-    
-    # Reads a file as bytes
-    with io.open(audio_file, "rb") as f:
-        content = f.read()
-        audio = speech.RecognitionAudio(content=content)
-
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.MP3,
-        sample_rate_hertz=16000,
-        language_code="en-US",
-    )
-
-    # Transcribes the audio into text
-    response = google_client.recognize(config=config, audio=audio)
-    print(response)
-    
-    # Step 2. construct GCStorage instance
-    storage_client = storage.Client(credentials=credentials)
-    gcs = GCStorage(storage_client)
-    
-    upload_media_to_gcs(gcs)
-    download_media_from_gcs(gcs)
-
-    return response
-
 MODEL = "gpt-4o-mini"
-# Define the path where you want to save the uploaded audio files
-UPLOAD_FOLDER = 'app/uploads/audio/'
+UPLOAD_FOLDER = 'app/uploads/'
+TRANSCRIPTIONS_TXT_FILE = 'transcriptions.txt'
+TRANSCRIPTIONS_FILE_PATH = os.path.join(UPLOAD_FOLDER, TRANSCRIPTIONS_TXT_FILE)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
+with open(TRANSCRIPTIONS_FILE_PATH, 'w') as file:
+    file.write('')
+    
 # export OPENAI_API_KEY='sk-proj-LhvuRIDZ5LTkPQo7X0GaT3BlbkFJmdOcUvs9717OEYmFybxL'
 client = OpenAI(
     organization='org-b7eWSRacp3SdwnJr0qm9O1sZ',
@@ -96,32 +31,144 @@ client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"),
 )
 
-@app.route('/api/speech_quality_feedback', methods=['POST'])
-def get_speaking_feedback():
-    audio_file = request.files.get('audio')
-    print(audio_file, file=sys.stdout)
-    
-    audio_mp3_path = os.path.join(UPLOAD_FOLDER, 'audioFile.mp3')
-    audio_file.save(audio_mp3_path)
+app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
+
+def convert_to_supported_format(audio_file, output_format='mp3'):
+    audio = AudioSegment.from_file(audio_file)
+    output_file = f"converted_audio.{output_format}"
+    audio.export(output_file, format=output_format)
+    return output_file
+
+def transcribe_model_selection_v2(
+    model: str,
+    audio_file: str,
+):
+    """Transcribe an audio file."""
+    config = speech.RecognitionConfig(
+        encoding=speech.RecognitionConfig.AudioEncoding.MP3,
+        sample_rate_hertz=16000,
+        language_code="en-US",
+    )
+
+    # Transcribes the audio into text
+    response = google_client.recognize(config=config, audio=audio_file)
+    print(response, file=sys.stdout)
+
+    return response
+
+def handle_transcriptions_file():
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.remove(TRANSCRIPTIONS_FILE_PATH)
+    with open(TRANSCRIPTIONS_FILE_PATH, 'w') as file:
+        file.write('')
         
-    response = transcribe_model_selection_v2(model="video", audio_file=audio_mp3_path)
+handle_transcriptions_file()
 
-    # Each result is for a consecutive portion of the audio. Iterate through
-    # them to get the transcripts for the entire audio file.
-    for result in response.results:
-        # The first alternative is the most likely one for this portion.
-        print(f"Transcript: {result.alternatives[0].transcript}")
-    
-    return jsonify({'status': "OK", 'text': 'test'})
+@app.route('/api/add_speech_to_transcriptions', methods=['POST'])
+def add_to_transcriptions():
+    audio_file = request.files.get('audio')
 
+    if audio_file:
+        # Convert the audio to a supported format
+        converted_audio_path = convert_to_supported_format(audio_file, output_format='mp3')
+
+        # Open the converted file
+        with open(converted_audio_path, 'rb') as audio_data:
+            # Call the OpenAI Whisper API
+            transcription = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_data,  # Pass the file-like object
+            )
+        
+        # Write to a transcriptions file locally
+        with open(TRANSCRIPTIONS_FILE_PATH, 'a') as f:
+                f.write(transcription.text + '\n')
+
+        # Optionally, delete the converted file if it's no longer needed
+        os.remove(converted_audio_path)
+
+        print(transcription.text)
+        return jsonify({'status': "OK", 'transcription': transcription.text})
+    else:
+        print("No audio file received.", file=sys.stdout)
+        return jsonify({'status': "No audio file received"}), 400
 
 @app.route('/api/question')
 def get_question():
     return {
         'question':
             'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\n You can return the answer in any order.',
-        'examples': [{'input': 'nums = [2,7,11,15], target = 9', 'output': '[0,1]', 'explanation': 'Because nums[0] + nums[1] == 9, we return [0, 1].'}, {'input': 'nums = [3,2,4], target = 6', 'output': '[1,2]'}, {'input': 'nums = [3,3], target = 6', 'output': '[0,1]'}]
+        'examples': [{'input': 'nums = [2,7,11,15], target = 9', 'output': '[0,1]', 'explanation': 'Because nums[0] + nums[1] == 9, we return [0, 1].'}, {'input': 'nums = [3,2,4], target = 6', 'output': '[1,2]'}, {'input': 'nums = [3,3], target = 6', 'output': '[0,1]'}],
+        'title': 'Two Sum'
     }
+    
+@app.route('/api/speech_quality_feedback', methods=['GET'])
+def get_speaking_feedback():
+
+    prompt = """
+        You are a software engineer interviewer tasked with evaluating a candidate's communication skills during a technical interview. Attached as content is the rubric for the interview.
+    """
+
+    assistant = client.beta.assistants.create(
+        name="Software Engineer Interviewer",
+        instructions=prompt,
+        model=MODEL,
+        tools=[{"type": "file_search"}],
+    )
+    
+    # Create a vector store caled "Financial Statements"
+    vector_store = client.beta.vector_stores.create(name="Transcription")
+    
+    # Ready the files for upload to OpenAI
+    file_streams = [open(TRANSCRIPTIONS_FILE_PATH, "rb")]
+    
+    # Use the upload and poll SDK helper to upload the files, add them to the vector store,
+    # and poll the status of the file batch for completion.
+    file_batch = client.beta.vector_stores.file_batches.upload_and_poll(
+        vector_store_id=vector_store.id, files=file_streams
+    )
+    
+    # You can print the status and the file counts of the batch to see the result of this operation.
+    print(file_batch.status)
+    print(file_batch.file_counts)
+    
+    assistant = client.beta.assistants.update(
+        assistant_id=assistant.id,
+        tool_resources={"file_search": {"vector_store_ids": [vector_store.id]}},
+    )
+    
+    rating_content = ''
+    
+    for content in speech_rubric_content:
+    
+        # Create a thread and attach the file to the message
+        thread = client.beta.threads.create(
+            messages=[
+                {
+                "role": "user",
+                "content": content,
+                }
+            ]
+        )
+
+        # The thread now has a vector store with that file in its tool resources.
+        print(thread.tool_resources.file_search)
+        
+        run = client.beta.threads.runs.create_and_poll(
+            thread_id=thread.id, assistant_id=assistant.id
+        )
+
+        messages = list(client.beta.threads.messages.list(thread_id=thread.id, run_id=run.id))
+
+        message_content = messages[0].content[0].text
+        
+        rating_content += message_content.value
+
+        print(message_content.value, file=sys.stdout)
+        
+    return {'rating': rating_content}
+    # print("\n".join(citations))
 
 @app.route('/api/code_quality_feedback', methods=['POST'])
 def code_quality_feedback():

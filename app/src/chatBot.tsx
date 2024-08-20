@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import useChatBot from '../hooks/useChatBot'
+import {ChatLines } from 'iconoir-react';
 
 interface ChatBoxProps {
   code: string;
@@ -40,21 +41,29 @@ const ChatBox: React.FC<ChatBoxProps> = ({ code }) => {
   }, [feedback, replies.length]);
 
   return (
-    <div className="flex flex-col w-full h-full max-h-screen p-2 box-border overflow-hidden">
-      <div className="flex-grow overflow-y-auto flex flex-col gap-5 max-h-[calc(100vh-140px)] text-[15px]">
-        <div className="self-start bg-lightgrey border-2 border-darkgrey rounded-lg p-2 max-w-[70%]">
-          Hello, what is your question?
+    <div className="flex flex-col w-full h-full max-h-screen box-border overflow-hidden bg-white rounded-2xl">
+      <div className="flex items-center w-full h-14 rounded-t-2xl bg-[#C8C6C6] p-2">
+          <ChatLines className="ml-6" height={26} width={26} strokeWidth={2} />
+          <p className="ml-2 font-semibold text-lg">
+            Ask Chris ...
+          </p>
         </div>
-        {questions.map((question, index) => (
-          <div key={index} className="flex flex-col gap-5">
-            <div className="self-end bg-lightgrey border-2 border-darkgrey rounded-lg p-2 max-w-[70%]">
-              {question}
-            </div>
-            <div className="self-start bg-lightgrey border-2 border-darkgrey rounded-lg p-2 max-w-[70%]">
-              {replies[index]}
-            </div>
+      <div className="pl-6 pr-6 mt-10">
+        <div className="flex-grow overflow-y-auto flex flex-col gap-5 max-h-[calc(100vh-140px)] text-[15px]">
+          <div className="self-start bg-lightgrey border-2 border-darkgrey rounded-lg p-2 max-w-[70%]">
+            Hello, what is your question?
           </div>
-        ))}
+          {questions.map((question, index) => (
+            <div key={index} className="flex flex-col gap-5">
+              <div className="self-end bg-lightgrey border-2 border-darkgrey rounded-lg p-2 max-w-[70%]">
+                {question}
+              </div>
+              <div className="self-start bg-lightgrey border-2 border-darkgrey rounded-lg p-2 max-w-[70%]">
+                {replies[index]}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
       <div className="flex w-full flex-shrink-0 mt-5">
         <input

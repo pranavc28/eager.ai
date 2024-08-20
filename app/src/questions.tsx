@@ -27,7 +27,7 @@ export default function Questions() {
  return (
    <div className="question-container">
      <div className="question">
-       <h2 className="question-title">Two Sum</h2>
+       <h2 className="question-title">{data?.question}</h2>
        {questionLines && questionLines?.map((line: string, index: number) => (
          <p key={index}>{line}</p>
        ))}

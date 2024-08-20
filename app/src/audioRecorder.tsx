@@ -1,10 +1,18 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { PlaySolid, PauseSolid, Pause } from 'iconoir-react';
 
-const AudioRecorder: React.FC = () => {
-  const [recording, setRecording] = useState<boolean>(false);
+interface AudioRecorderProps {
+    setRecording: (recording: boolean) => void;
+    recording: boolean;
+    handleSubmit: () => void;
+};
+
+const AudioRecorder: React.FC<AudioRecorderProps> = ({setRecording, recording, handleSubmit}) => {
   const [audioURL, setAudioURL] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const currentChunkSizeRef = useRef<number>(0);
+
   const CHUNK_SIZE = 1024 * 1024; // 1MB chunk size
 
   const startRecording = async () => {
@@ -12,70 +20,77 @@ const AudioRecorder: React.FC = () => {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
+      
+      // Use a supported MIME type such as "audio/webm" or "audio/ogg"
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: "audio/webm" });
       audioChunksRef.current = [];
+      currentChunkSizeRef.current = 0;
 
       mediaRecorderRef.current.ondataavailable = (event: BlobEvent) => {
         audioChunksRef.current.push(event.data);
+        currentChunkSizeRef.current += event.data.size;
+
+        if (currentChunkSizeRef.current >= CHUNK_SIZE) {
+          sendAudioData();
+        }
       };
 
-      mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/wav" });
-        uploadBlob(audioBlob, "audio/wav")
-        const url = URL.createObjectURL(audioBlob);
-        setAudioURL(url);
-      };
-
-      mediaRecorderRef.current.start();
+      mediaRecorderRef.current.start(1000); // Collect audio data every second
       setRecording(true);
     } catch (error) {
       console.error("Error accessing microphone:", error);
     }
   };
 
-  function uploadBlob(audioBlob: Blob, fileType: string) {
+  const sendAudioData = () => {
+    if (audioChunksRef.current.length > 0) {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        console.log(`Sending audio chunk, size: ${audioBlob.size}`);
+        uploadChunk(audioBlob);
+        audioChunksRef.current = [];
+        currentChunkSizeRef.current = 0;
+    }
+  };
+
+  const uploadChunk = async (audioBlob: Blob) => {
     const formData = new FormData();
-    formData.append('audio', audioBlob, 'file');
-    formData.append('type', fileType || 'wav');
-  
-    // Your server endpoint to upload audio:
-    const apiUrl = "http://127.0.0.1:5328/api/speech_quality_feedback";
-  
-    const data = fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Accept': 'application/json' },
-      body: formData
-    }).then(response => {
-        return response.json();
-    });
-  }
+    formData.append("audio", audioBlob, "chunk.webm");
+
+    try {
+      const response = await fetch("http://127.0.0.1:5328/api/add_speech_to_transcriptions", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
+      console.log("Chunk uploaded successfully!");
+    } catch (error) {
+      console.error("Error uploading audio chunk:", error);
+    }
+  };
 
   const stopRecording = () => {
     if (!recording) return;
 
     mediaRecorderRef.current?.stop();
+    console.log(currentChunkSizeRef.current);
     setRecording(false);
+    sendAudioData(); // Send any remaining data after stopping
   };
 
-  const replayAudio = () => {
-    if (!audioURL) return;
-
-    const audio = new Audio(audioURL);
-    audio.play();
-  };
+  useEffect(() => {
+    return () => {
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
 
   return (
-    <div>
-      <button className="border-2 border-black" onClick={startRecording} disabled={recording}>
-        Start Recording
-      </button>
-      <button className="border-2 border-black" onClick={stopRecording} disabled={!recording}>
-        Stop Recording
-      </button>
-      <button className="border-2 border-black" onClick={replayAudio} disabled={!audioURL}>
-        Replay Audio
-      </button>
-      {audioURL && <audio src={audioURL} controls />}
+    <div className="flex items-center space-x-4">
+        <PlaySolid color="black" height={36} width={36} onClick={handleSubmit} />
+        {!recording ? <PauseSolid color="black" height={36} width={36} onClick={stopRecording} /> : <Pause color="black" height={48} width={48} onClick={stopRecording} />}
     </div>
   );
 };
