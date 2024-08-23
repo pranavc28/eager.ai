@@ -35,7 +35,8 @@ const useRunCode = () => {
         output,
         error,
         loading,
-        getFeedback
+        getFeedback,
+        setOutput,
     }
 };
 

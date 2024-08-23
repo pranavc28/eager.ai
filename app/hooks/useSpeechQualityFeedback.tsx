@@ -31,7 +31,8 @@ const useSpeechQualityFeedback = () => {
         output,
         error,
         loading,
-        getSpeechFeedback
+        getSpeechFeedback,
+        setOutput,
     }
 };
 

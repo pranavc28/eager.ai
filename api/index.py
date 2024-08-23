@@ -16,10 +16,13 @@ from speech_quality_rubric import speech_rubric_content
 client_file='chrisai-432605-f6bfd5c847bc.json'
 credentials=service_account.Credentials.from_service_account_file(client_file)
 google_client = speech.SpeechClient(credentials=credentials)
-MODEL = "gpt-4o-mini"
+MODEL = "gpt-4o"
 UPLOAD_FOLDER = 'app/uploads/'
 TRANSCRIPTIONS_TXT_FILE = 'transcriptions.txt'
 TRANSCRIPTIONS_FILE_PATH = os.path.join(UPLOAD_FOLDER, TRANSCRIPTIONS_TXT_FILE)
+interview_question = 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice. You can return the answer in any order.'
+answer = 'The Python code iterates through a list of numbers (`nums`) to find two distinct elements that sum up to a given `target`, using a dictionary (`digs`) to store the indices of the elements. If such a pair is found, it returns their indices; otherwise, it returns an empty list.'
+    
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 with open(TRANSCRIPTIONS_FILE_PATH, 'w') as file:
     file.write('')
@@ -106,8 +109,26 @@ def get_question():
 @app.route('/api/speech_quality_feedback', methods=['GET'])
 def get_speaking_feedback():
 
-    prompt = """
-        You are a software engineer interviewer tasked with evaluating a candidate's communication skills during a technical interview. Attached as content is the rubric for the interview.
+    prompt = f"""
+    You are evaluating a candidate's communication skills during a technical interview.
+
+    ### Task:
+    Evaluate the provided transcript to determine if the candidate correctly answered the following coding question:
+
+    **Coding Question:** {interview_question}
+
+    **Expected Answer:** {answer}
+
+    ### Instructions:
+    - If the transcript accurately reflects the expected answer or a similar correct approach, consider this a correct response.
+    - If the transcript fails to answer the question correctly or doesn't resemble the expected answer, consider this an incorrect response.
+
+    Rate the candidate's performance based on the accuracy and clarity of their response. Assign a score of 0 if the answer is incorrect or absent.
+    
+    I want the following structure as output:
+    1. Rubric type.
+    2. Score rating. (If there is no possible score rating, then give a 1. Put a "/4" after the rating.)
+    3. Maximum 3 sentence explanation all on the same paragraph. No references.
     """
 
     assistant = client.beta.assistants.create(
@@ -163,7 +184,7 @@ def get_speaking_feedback():
 
         message_content = messages[0].content[0].text
         
-        rating_content += message_content.value
+        rating_content += message_content.value + '\n\n'
 
         print(message_content.value, file=sys.stdout)
         
@@ -174,9 +195,6 @@ def get_speaking_feedback():
 def code_quality_feedback():
     data = request.get_json()
     code = data['code']
-
-    interview_question = 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice. You can return the answer in any order.'    
-    answer = 'The Python code iterates through a list of numbers (`nums`) to find two distinct elements that sum up to a given `target`, using a dictionary (`digs`) to store the indices of the elements. If such a pair is found, it returns their indices; otherwise, it returns an empty list.'
 
     drafter_answers = []
     temp = 0.3
@@ -228,10 +246,9 @@ def code_quality_feedback():
         f"You are a software engineer interviewer.  Your task is to judge an interviewee based on their code quality. "
         f"The interviewee was given the following coding question: '{interview_question}'. "
         f"This is the code written by the interviewee : '{code}'. "
-        f"The correct answer to the coding question is: '{answer}'. If the code does not seem at all similar to the answer, and does not compile give the rating 0. "
-        f"You are given a list of feedback, per aspect of code quality: {drafter_answers}. "
+        f"You are given a sample list of feedback, per aspect of code quality: {drafter_answers}. "
         "Rate the interview out of 8 (one for each element of the list if the element says that the interviewee has shown mastery in the topic associated to that element). "
-        "You should return a number out of 8 in the answer, and a maximum of 3 of the most valid feedbacks from the list above. Do not make anything up. Limit your answer to 6 sentences."
+        "You should return a number out of 8 in the answer (follow it with a '/4'), and a maximum of 3 of the most valid feedbacks from the list above. Do not make anything up. Limit your answer to 6 sentences."
     )
 
     generalist_assistant = client.beta.assistants.create(

@@ -10,21 +10,36 @@ import useCodeQualityFeedback from './hooks/useCodeQualityFeedback';
 import useSpeechQualityFeedback from './hooks/useSpeechQualityFeedback';
 import AudioRecorder from './src/audioRecorder';
 import Timer from './src/timer'
+import { DotArrowLeft, CodeBrackets, Microphone } from 'iconoir-react';
+import useFetch from './hooks/useFetch';
+import { TailSpin } from "react-loader-spinner";
+
+interface QuestionOutput {
+  title: string;
+}
 
 export default function Home() {
   const [code, setCode] = useState('');
   const { output, error, loading, runCode } = useRunCode();
+  const { data: questionOutput } = useFetch('http://127.0.0.1:5328/api/question') as { data: QuestionOutput };
   const [showFeedback, setShowFeedback] = useState(false);
-  const {output: codeQualityOutput, error: codeQualityError, loading: codeQualityLoading, getFeedback } = useCodeQualityFeedback();
-  const {output: speechQualityOutput, error: speechQualityError, loading: speechQualityLoading, getSpeechFeedback } = useSpeechQualityFeedback();
+  const {output: codeQualityOutput, error: codeQualityError, loading: codeQualityLoading, getFeedback, setOutput: setCodeQualityOutput } = useCodeQualityFeedback();
+  const {output: speechQualityOutput, error: speechQualityError, loading: speechQualityLoading, getSpeechFeedback, setOutput: setSpeechQualityOutput } = useSpeechQualityFeedback();
   const [recording, setRecording] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState(60*30); // Assuming a 60-second timer
-  const [isFlashing, setIsFlashing] = useState(false);
+
+  const isLoading = !codeQualityOutput && !speechQualityOutput;
 
   const handleSubmit = () => {
     getFeedback(code);
     getSpeechFeedback();
     setShowFeedback(true); // Trigger the feedback view
+  }
+
+  const handleBack = () => {
+    setSpeechQualityOutput('');
+    setCodeQualityOutput('');
+    setShowFeedback(false); // Trigger the feedback view
   }
 
   const handleRun = () => {
@@ -84,30 +99,54 @@ export default function Home() {
 
   if (showFeedback) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-between p-20">
-        <div className="flex flex-row w-full gap-4">
-          <div className="flex-1 border-2 border-black p-4">
-            <h2>Code Quality Feedback</h2>
-            <p>{codeQualityOutput}</p>
+      <main className="flex min-h-screen flex-col items-center pt-20 pr-20 pl-20 pb-10">
+        <div className="flex items-center justify-between w-full">
+          <h1 className="text-[#51523B] font-bold text-4xl flex-shrink-0">eager.ai</h1>
+          <button className="flex flex-row ml-6 p-2 px-6 rounded-md text-white bg-black cursor-pointer mt-2" onClick={handleBack}>
+            <DotArrowLeft className="mr-3" strokeWidth={2}/>
+            Back to Home
+          </button>
+          <h1 className="flex-shrink-0 text-[#51523B] font-bold text-2xl mr-4">/feedback</h1>
+      </div>
+      {isLoading ? 
+        <div
+          className="fixed inset-0 flex items-center justify-center"
+        >
+          <div style={{ width: "200px", height: "200px", display: "flex", alignItems: "center", justifyContent: "center", color: "black" }}>
+            <TailSpin color={"#000000"}/>
           </div>
-          <div className="flex-1 border-2 border-black p-4">
-            <h2>Speech Quality Feedback</h2>
-            <p>{speechQualityOutput}</p>
+        </div> : 
+        <div className="flex flex-row w-full space-x-4 mt-6 items-start">
+          <div className="flex flex-col w-1/2 min-h-0">
+            <div className="flex items-center w-full h-10 rounded-t-2xl bg-[#C8C6C6] p-2">
+              <CodeBrackets className="ml-4" height={20} width={20} strokeWidth={2} />
+              <p className="ml-2 font-semibold text-md">Code Quality Feedback</p>
+            </div>
+            <pre className="p-[8vh] bg-gray-100 text-sm text-left font-mono border border-gray-300 rounded-b-2xl whitespace-pre-wrap">
+              {codeQualityOutput}
+            </pre>
+          </div>
+          <div className="flex flex-col w-1/2 min-h-0">
+            <div className="flex items-center w-full h-10 rounded-t-2xl bg-[#C8C6C6] p-2">
+              <Microphone className="ml-4" height={20} width={20} strokeWidth={2} />
+              <p className="ml-2 font-semibold text-md">Speech Quality Feedback</p>
+            </div>
+            <pre className="p-[8vh] bg-gray-100 text-sm text-left font-mono border border-gray-300 rounded-b-2xl whitespace-pre-wrap">
+              {speechQualityOutput}
+            </pre>
           </div>
         </div>
-        <button className="border-2 border-black mt-4" onClick={() => setShowFeedback(false)}>
-          Back to Home
-        </button>
+      }
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center p-20">  
+    <main className="flex min-h-screen flex-col items-center pt-14 pl-20 pr-20">  
       <div className="flex items-center justify-between w-full">
         <h1 className="text-[#51523B] font-bold text-4xl flex-shrink-0">eager.ai</h1>
         <div className="flex items-center space-x-4">
-          <AudioRecorder setRecording={setRecording} recording={recording} handleSubmit={handleSubmit} />
+          <AudioRecorder setRecording={setRecording} recording={recording} />
           <button
             className="border-2 border-black pt-1 pb-1 pl-3 pr-3 flex items-center rounded-[10px] bg-[#C8C6C6] text-black"
             onClick={handleSubmit}
@@ -125,21 +164,22 @@ export default function Home() {
         </div>
         <Timer className="flex-shrink-0" recording={recording} setTimeLeft={setTimeLeft} timeLeft={timeLeft} />
       </div>
-      <div className="flex flex-row w-full h-screen gap-16 mt-16">
-  <div className="flex-1 h-full">
-    <ChatBot code={code} />
-  </div>
-  <div className="flex flex-col h-full overflow-hidden">
-    <div className="flex-1 overflow-auto">
-      <CodeEditor code={code} setCode={setCode} handleKeyDown={handleKeyDown} />
-    </div>
-    <div className="flex-shrink-0 mt-4 overflow-auto">
-      <RunCodeOutput output={output} />
-    </div>
-  </div>
-</div>
-
-
+      <div className="flex flex-row w-full h-[70vh] gap-16 mt-10">
+        <div className="h-full w-[60%]">
+          <ChatBot code={code} />
+        </div>
+        <div className="w-[40vw] flex flex-col h-full overflow-hidden">
+        <div className="flex-grow overflow-auto">
+          <CodeEditor code={code} setCode={setCode} handleKeyDown={handleKeyDown} />
+        </div>
+        <div className="flex-shrink-0 mt-4 overflow-auto">
+          <RunCodeOutput output={output} />
+        </div>
+      </div>
+      </div>
+      <div className="flex items-center justify-between w-full">
+        <h1 className="text-black font-bold text-2xl ml-4 mt-8 flex-shrink-0">Question - {questionOutput?.title}</h1>
+      </div>
     </main>
   )
 }

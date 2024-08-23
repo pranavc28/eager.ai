@@ -4,16 +4,15 @@ import { PlaySolid, PauseSolid, Pause } from 'iconoir-react';
 interface AudioRecorderProps {
     setRecording: (recording: boolean) => void;
     recording: boolean;
-    handleSubmit: () => void;
 };
 
-const AudioRecorder: React.FC<AudioRecorderProps> = ({setRecording, recording, handleSubmit}) => {
+const AudioRecorder: React.FC<AudioRecorderProps> = ({setRecording, recording}) => {
   const [audioURL, setAudioURL] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const currentChunkSizeRef = useRef<number>(0);
 
-  const CHUNK_SIZE = 1024 * 1024; // 1MB chunk size
+  const CHUNK_SIZE = 1024 * 1024 * 6; // 1MB chunk size
 
   const startRecording = async () => {
     if (recording) return;
@@ -89,8 +88,8 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({setRecording, recording, h
 
   return (
     <div className="flex items-center space-x-4">
-        <PlaySolid color="black" height={36} width={36} onClick={handleSubmit} />
-        {!recording ? <PauseSolid color="black" height={36} width={36} onClick={stopRecording} /> : <Pause color="black" height={48} width={48} onClick={stopRecording} />}
+        <PlaySolid color="black" height={36} width={36} onClick={startRecording} className="cursor-pointer" />
+        {!recording ? <PauseSolid color="black" height={36} width={36} onClick={stopRecording} className="cursor-pointer" /> : <Pause color="black" height={36} width={36} onClick={stopRecording} className="cursor-pointer" />}
     </div>
   );
 };

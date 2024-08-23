@@ -1,4 +1,4 @@
-communication_content = """Rate the interviewee based on the rubric attached put of 4 points. Give the exact value, then an explanation.:
+communication_content = """communication rubric: Rate the interviewee based on the rubric attached put of 4 points. Give the exact value, then an explanation.:
     Please carefully read through it and assign a communication score to the candidate based on the following rubric:
 
     Communication Rubric:
@@ -14,7 +14,7 @@ communication_content = """Rate the interviewee based on the rubric attached put
     After assigning a score, please provide a brief explanation for your rating.
 """
 
-algorithms_content = """Rate the interviewee based on the rubric attached put of 4 points. Give the exact value, then an explanation:
+algorithms_content = """algorithms rubric: Rate the interviewee based on the rubric attached put of 4 points. Give the exact value, then an explanation:
 
     The solution to the problem should be: 'The Python code iterates through a list of numbers (`nums`) to find two distinct elements that sum up to a given `target`, using a dictionary (`digs`) to store the indices of the elements. If such a pair is found, it returns their indices; otherwise, it returns an empty list.'
 
@@ -33,7 +33,7 @@ algorithms_content = """Rate the interviewee based on the rubric attached put of
     After assigning a score, please provide a brief explanation for your rating.
 """
 
-problem_solving_content = """Rate the interviewee based on the rubric attached put of 4 points. Give the exact value, then an explanation.:
+problem_solving_content = """Problem solving rubric: Rate the interviewee based on the rubric attached put of 4 points. Give the exact value, then an explanation.:
     Please carefully read through it and assign a problem solving score to the candidate based on the following rubric:
 
     Problem Solving Rubric:

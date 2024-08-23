@@ -1,1 +1,2 @@
-Thank you.
+I want to keep testing this, seeing if it works, and ensuring that there is no issue.
+let's try this let's try this let's try this I hope the transcript is okay because I'm trying to explain how this function works so let's start off with our most naive solution which would be O of n squared time complexity I'll first go through each element of the array and the next subsequent elements and then I'll sum them up and between the two if it hits the target I'll return those two indices and that will be my answer however that is O of n squared and will be inefficient so as opposed to that I'd actually rather end up focusing on a hash map I do think that a hash map is better and so that will be my focus
