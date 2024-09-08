@@ -12,7 +12,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({setRecording, recording}) 
   const audioChunksRef = useRef<Blob[]>([]);
   const currentChunkSizeRef = useRef<number>(0);
 
-  const CHUNK_SIZE = 1024 * 1024 * 6; // 1MB chunk size
+  const CHUNK_SIZE = 1024 * 1024; // 1MB chunk size
 
   const startRecording = async () => {
     if (recording) return;
@@ -28,10 +28,6 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({setRecording, recording}) 
       mediaRecorderRef.current.ondataavailable = (event: BlobEvent) => {
         audioChunksRef.current.push(event.data);
         currentChunkSizeRef.current += event.data.size;
-
-        if (currentChunkSizeRef.current >= CHUNK_SIZE) {
-          sendAudioData();
-        }
       };
 
       mediaRecorderRef.current.start(1000); // Collect audio data every second

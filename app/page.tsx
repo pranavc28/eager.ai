@@ -13,12 +13,14 @@ import Timer from './src/timer'
 import { DotArrowLeft, CodeBrackets, Microphone } from 'iconoir-react';
 import useFetch from './hooks/useFetch';
 import { TailSpin } from "react-loader-spinner";
+import { useUser } from '@clerk/nextjs'
 
 interface QuestionOutput {
   title: string;
 }
 
 export default function Home() {
+  const { isLoaded, isSignedIn, user } = useUser()
   const [code, setCode] = useState('');
   const { output, error, loading, runCode } = useRunCode();
   const { data: questionOutput } = useFetch('http://127.0.0.1:5328/api/question') as { data: QuestionOutput };
@@ -29,6 +31,10 @@ export default function Home() {
   const [timeLeft, setTimeLeft] = useState(60*30); // Assuming a 60-second timer
 
   const isLoading = !codeQualityOutput && !speechQualityOutput;
+
+  useEffect(() => {
+    console.log(user);
+  }, [isSignedIn, user])
 
   const handleSubmit = () => {
     getFeedback(code);

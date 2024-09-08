@@ -9,24 +9,16 @@ from two_sum_data import clusters
 from two_sum_code_quality import code_quality_clusters
 from flask_cors import CORS
 import speech_recognition as sr
-from google.cloud import speech
-from google.oauth2 import service_account
 from speech_quality_rubric import speech_rubric_content
+from database import run_sample_test
 
-client_file='chrisai-432605-f6bfd5c847bc.json'
-credentials=service_account.Credentials.from_service_account_file(client_file)
-google_client = speech.SpeechClient(credentials=credentials)
 MODEL = "gpt-4o"
 UPLOAD_FOLDER = 'app/uploads/'
 TRANSCRIPTIONS_TXT_FILE = 'transcriptions.txt'
 TRANSCRIPTIONS_FILE_PATH = os.path.join(UPLOAD_FOLDER, TRANSCRIPTIONS_TXT_FILE)
 interview_question = 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice. You can return the answer in any order.'
 answer = 'The Python code iterates through a list of numbers (`nums`) to find two distinct elements that sum up to a given `target`, using a dictionary (`digs`) to store the indices of the elements. If such a pair is found, it returns their indices; otherwise, it returns an empty list.'
-    
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-with open(TRANSCRIPTIONS_FILE_PATH, 'w') as file:
-    file.write('')
-    
+
 # export OPENAI_API_KEY='sk-proj-LhvuRIDZ5LTkPQo7X0GaT3BlbkFJmdOcUvs9717OEYmFybxL'
 client = OpenAI(
     organization='org-b7eWSRacp3SdwnJr0qm9O1sZ',
@@ -38,7 +30,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 
 def convert_to_supported_format(audio_file, output_format='mp3'):
-    audio = AudioSegment.from_file(audio_file)
+    audio = AudioSegment.from_file(audio_file, format='webm')
     output_file = f"converted_audio.{output_format}"
     audio.export(output_file, format=output_format)
     return output_file
@@ -60,13 +52,14 @@ def transcribe_model_selection_v2(
 
     return response
 
-def handle_transcriptions_file():
+def handle_transcriptions_file(): 
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    with open(TRANSCRIPTIONS_FILE_PATH, 'w') as file:
+        file.write('')
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     os.remove(TRANSCRIPTIONS_FILE_PATH)
     with open(TRANSCRIPTIONS_FILE_PATH, 'w') as file:
         file.write('')
-        
-handle_transcriptions_file()
 
 @app.route('/api/add_speech_to_transcriptions', methods=['POST'])
 def add_to_transcriptions():
@@ -406,3 +399,6 @@ def run():
         return jsonify({'output': output})
     except Exception as e:
         return jsonify({'output': str(e)}) 
+
+handle_transcriptions_file()
+run_sample_test()
