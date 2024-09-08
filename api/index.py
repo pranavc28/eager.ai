@@ -19,7 +19,6 @@ TRANSCRIPTIONS_FILE_PATH = os.path.join(UPLOAD_FOLDER, TRANSCRIPTIONS_TXT_FILE)
 interview_question = 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target. You may assume that each input would have exactly one solution, and you may not use the same element twice. You can return the answer in any order.'
 answer = 'The Python code iterates through a list of numbers (`nums`) to find two distinct elements that sum up to a given `target`, using a dictionary (`digs`) to store the indices of the elements. If such a pair is found, it returns their indices; otherwise, it returns an empty list.'
 
-# export OPENAI_API_KEY='sk-proj-LhvuRIDZ5LTkPQo7X0GaT3BlbkFJmdOcUvs9717OEYmFybxL'
 client = OpenAI(
     organization='org-b7eWSRacp3SdwnJr0qm9O1sZ',
     project='proj_7vmgneF3f7mNXFeZ4ld2kk4o',
