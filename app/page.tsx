@@ -20,7 +20,7 @@ interface QuestionOutput {
 }
 
 export default function Home() {
-  const { isLoaded, isSignedIn, user } = useUser()
+  const { isSignedIn, user } = useUser()
   const [code, setCode] = useState('');
   const { output, error, loading, runCode } = useRunCode();
   const { data: questionOutput } = useFetch('http://127.0.0.1:5328/api/question') as { data: QuestionOutput };
